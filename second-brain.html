@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Second Brain</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080810;
+  --surface: #0f0f1a;
+  --card: #141420;
+  --card2: #1a1a2a;
+  --border: #1e1e32;
+  --border2: #2a2a42;
+  --gold: #f0c040;
+  --gold2: #c89a20;
+  --teal: #3dd6c8;
+  --rose: #f06080;
+  --lavender: #9b80f0;
+  --green: #34d399;
+  --orange: #fb923c;
+  --text: #e8e8f5;
+  --text2: #a0a0c0;
+  --muted: #606080;
+  --sidebar-w: 220px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+html { font-size: 16px; }
+body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; overflow-x:hidden; }
+
+/* NOISE OVERLAY */
+body::after { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events:none; z-index:999; }
+
+/* LOCK SCREEN */
+#lockscreen { position:fixed; inset:0; background:var(--bg); z-index:500; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:32px; }
+#lockscreen.hidden { display:none; }
+.lock-logo { font-family:'Syne',sans-serif; font-size:13px; font-weight:800; letter-spacing:6px; text-transform:uppercase; color:var(--muted); }
+.lock-title { font-family:'Syne',sans-serif; font-size:48px; font-weight:800; background:linear-gradient(135deg,var(--gold),var(--teal)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-align:center; line-height:1; }
+.lock-subtitle { font-size:13px; color:var(--muted); font-family:'DM Mono',monospace; letter-spacing:2px; text-align:center; }
+.pin-dots { display:flex; gap:16px; margin:8px 0; }
+.pin-dot { width:14px; height:14px; border-radius:50%; border:2px solid var(--border2); background:transparent; transition:all 0.2s; }
+.pin-dot.filled { background:var(--gold); border-color:var(--gold); }
+.pin-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:220px; }
+.pin-btn { background:var(--card); border:1px solid var(--border); border-radius:12px; color:var(--text); font-family:'Syne',sans-serif; font-size:22px; font-weight:700; padding:18px; cursor:pointer; transition:all 0.15s; user-select:none; }
+.pin-btn:hover { background:var(--card2); border-color:var(--border2); transform:scale(1.05); }
+.pin-btn:active { transform:scale(0.96); }
+.pin-btn.del { font-size:16px; color:var(--muted); }
+.pin-error { color:var(--rose); font-family:'DM Mono',monospace; font-size:11px; letter-spacing:2px; height:16px; }
+.pin-hint { font-size:11px; color:var(--muted); font-family:'DM Mono',monospace; letter-spacing:1px; cursor:pointer; text-decoration:underline; }
+
+/* LAYOUT */
+#app { display:flex; min-height:100vh; }
+#app.locked { display:none; }
+
+/* SIDEBAR */
+.sidebar { width:var(--sidebar-w); background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:50; transition:transform 0.3s; }
+.sidebar-header { padding:24px 20px 20px; border-bottom:1px solid var(--border); }
+.sidebar-brand { font-family:'Syne',sans-serif; font-size:16px; font-weight:800; color:var(--text); letter-spacing:1px; }
+.sidebar-sub { font-family:'DM Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:2px; margin-top:3px; }
+.sidebar-nav { flex:1; padding:16px 12px; overflow-y:auto; }
+.nav-group { margin-bottom:24px; }
+.nav-group-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); padding:0 8px; margin-bottom:6px; }
+.nav-btn { display:flex; align-items:center; gap:10px; width:100%; padding:9px 10px; border-radius:8px; border:none; background:transparent; color:var(--text2); font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; transition:all 0.2s; text-align:left; }
+.nav-btn:hover { background:var(--card); color:var(--text); }
+.nav-btn.active { background:var(--card2); color:var(--text); border:1px solid var(--border2); }
+.nav-icon { width:18px; height:18px; flex-shrink:0; opacity:0.7; }
+.nav-btn.active .nav-icon { opacity:1; }
+.sidebar-footer { padding:16px 20px; border-top:1px solid var(--border); }
+.lock-btn { display:flex; align-items:center; gap:8px; width:100%; background:transparent; border:1px solid var(--border); border-radius:8px; padding:8px 12px; color:var(--muted); font-family:'DM Mono',monospace; font-size:10px; letter-spacing:1px; cursor:pointer; transition:all 0.2s; }
+.lock-btn:hover { border-color:var(--rose); color:var(--rose); }
+
+/* MOBILE MENU */
+.mobile-bar { display:none; position:fixed; top:0; left:0; right:0; height:56px; background:var(--surface); border-bottom:1px solid var(--border); z-index:60; align-items:center; padding:0 16px; gap:12px; }
+.menu-btn { background:transparent; border:none; color:var(--text); cursor:pointer; padding:6px; }
+.mobile-brand { font-family:'Syne',sans-serif; font-size:15px; font-weight:800; }
+.sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:49; }
+
+/* MAIN CONTENT */
+.main { flex:1; margin-left:var(--sidebar-w); min-height:100vh; }
+.page { display:none; padding:40px; max-width:1000px; }
+.page.active { display:block; animation:fadeUp 0.3s ease both; }
+
+/* PAGE HEADER */
+.page-eyebrow { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:4px; text-transform:uppercase; color:var(--gold); margin-bottom:8px; opacity:0.8; }
+.page-title { font-family:'Syne',sans-serif; font-size:36px; font-weight:800; line-height:1.1; margin-bottom:6px; }
+.page-sub { font-size:13px; color:var(--muted); margin-bottom:32px; }
+.section-divider { height:1px; background:var(--border); margin:32px 0; }
+
+/* CARDS */
+.card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px; position:relative; overflow:hidden; }
+.card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+.card.gold::before { background:linear-gradient(90deg,var(--gold),transparent); }
+.card.teal::before { background:linear-gradient(90deg,var(--teal),transparent); }
+.card.rose::before { background:linear-gradient(90deg,var(--rose),transparent); }
+.card.lavender::before { background:linear-gradient(90deg,var(--lavender),transparent); }
+.card.green::before { background:linear-gradient(90deg,var(--green),transparent); }
+.card.orange::before { background:linear-gradient(90deg,var(--orange),transparent); }
+
+.card-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+.card-val { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; line-height:1; }
+
+/* GRID LAYOUTS */
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+
+/* PROGRESS BAR */
+.bar-track { height:4px; background:var(--border); border-radius:100px; overflow:hidden; margin-top:10px; }
+.bar-fill { height:100%; border-radius:100px; transition:width 0.5s ease; }
+.bar-fill.gold { background:var(--gold); }
+.bar-fill.teal { background:var(--teal); }
+.bar-fill.green { background:var(--green); }
+.bar-fill.rose { background:var(--rose); }
+.bar-fill.lavender { background:var(--lavender); }
+.bar-fill.orange { background:var(--orange); }
+
+/* INPUTS */
+.input, .textarea, select { background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; padding:10px 12px; transition:border-color 0.2s; outline:none; width:100%; }
+.input:focus, .textarea:focus, select:focus { border-color:var(--border2); }
+.textarea { resize:vertical; min-height:80px; line-height:1.6; }
+select { cursor:pointer; }
+
+/* BUTTONS */
+.btn { padding:9px 18px; border-radius:8px; border:none; font-family:'DM Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; transition:all 0.2s; }
+.btn-primary { background:var(--gold); color:#000; }
+.btn-primary:hover { background:var(--gold2); }
+.btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); }
+.btn-ghost:hover { border-color:var(--border2); color:var(--text); }
+.btn-danger { background:transparent; border:1px solid var(--border); color:var(--muted); }
+.btn-danger:hover { border-color:var(--rose); color:var(--rose); }
+.btn-sm { padding:5px 12px; font-size:9px; }
+
+/* TAGS */
+.tag { display:inline-flex; align-items:center; font-family:'DM Mono',monospace; font-size:9px; letter-spacing:1px; padding:3px 10px; border-radius:100px; text-transform:uppercase; }
+.tag.gold { background:rgba(240,192,64,0.12); color:var(--gold); border:1px solid rgba(240,192,64,0.2); }
+.tag.teal { background:rgba(61,214,200,0.12); color:var(--teal); border:1px solid rgba(61,214,200,0.2); }
+.tag.rose { background:rgba(240,96,128,0.12); color:var(--rose); border:1px solid rgba(240,96,128,0.2); }
+.tag.green { background:rgba(52,211,153,0.12); color:var(--green); border:1px solid rgba(52,211,153,0.2); }
+.tag.orange { background:rgba(251,146,60,0.12); color:var(--orange); border:1px solid rgba(251,146,60,0.2); }
+.tag.muted { background:var(--surface); color:var(--muted); border:1px solid var(--border); }
+
+/* FORM ROW */
+.form-row { display:flex; gap:10px; align-items:flex-end; margin-bottom:16px; flex-wrap:wrap; }
+.form-group { flex:1; min-width:120px; }
+.form-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; display:block; }
+
+/* TASK ITEM */
+.task-item { display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--card); border:1px solid var(--border); border-radius:10px; margin-bottom:8px; transition:all 0.2s; }
+.task-item:hover { border-color:var(--border2); }
+.task-check { width:18px; height:18px; border-radius:50%; border:2px solid var(--border2); flex-shrink:0; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:center; }
+.task-check:hover { border-color:var(--green); }
+.task-check.done { background:var(--green); border-color:var(--green); }
+.task-check.done::after { content:''; width:6px; height:4px; border-left:2px solid #000; border-bottom:2px solid #000; transform:rotate(-45deg) translateY(-1px); display:block; }
+.task-text { flex:1; font-size:13px; line-height:1.4; }
+.task-text.done { text-decoration:line-through; color:var(--muted); }
+.task-meta { display:flex; align-items:center; gap:8px; }
+.task-del { background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:16px; line-height:1; padding:2px 6px; border-radius:4px; }
+.task-del:hover { color:var(--rose); }
+
+/* GOAL ITEM */
+.goal-item { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:10px; }
+.goal-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; }
+.goal-title { font-size:14px; font-weight:500; line-height:1.4; }
+.goal-actions { display:flex; gap:6px; flex-shrink:0; }
+.goal-pct { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); margin-top:4px; }
+
+/* NOTE ITEM */
+.note-item { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px; margin-bottom:12px; cursor:pointer; transition:all 0.2s; }
+.note-item:hover { border-color:var(--border2); transform:translateY(-2px); }
+.note-title { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; margin-bottom:6px; }
+.note-preview { font-size:12px; color:var(--muted); line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.note-footer { display:flex; align-items:center; justify-content:space-between; margin-top:10px; }
+.note-date { font-family:'DM Mono',monospace; font-size:9px; color:var(--muted); }
+
+/* NOTE EDITOR */
+.note-editor { display:none; }
+.note-editor.open { display:block; }
+.note-list-view { display:block; }
+.note-list-view.hidden { display:none; }
+.editor-header { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+.editor-back { background:transparent; border:1px solid var(--border); border-radius:8px; padding:7px 12px; color:var(--muted); font-family:'DM Mono',monospace; font-size:10px; cursor:pointer; }
+.editor-back:hover { color:var(--text); }
+.editor-title { background:transparent; border:none; outline:none; font-family:'Syne',sans-serif; font-size:28px; font-weight:800; color:var(--text); width:100%; }
+.editor-body { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; }
+.editor-textarea { width:100%; background:transparent; border:none; outline:none; font-family:'DM Sans',sans-serif; font-size:14px; color:var(--text); line-height:1.8; resize:none; min-height:400px; }
+
+/* BUDGET */
+.budget-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:24px; }
+.budget-item { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:var(--card); border:1px solid var(--border); border-radius:10px; margin-bottom:8px; }
+.budget-item-label { font-size:13px; }
+.budget-item-amount { font-family:'DM Mono',monospace; font-size:13px; font-weight:500; }
+.budget-item-del { background:transparent; border:none; color:var(--muted); cursor:pointer; }
+.budget-item-del:hover { color:var(--rose); }
+
+/* ROADMAP MINI */
+.phase-row { display:flex; align-items:center; gap:14px; padding:12px 14px; background:var(--card); border:1px solid var(--border); border-radius:10px; margin-bottom:8px; }
+.phase-indicator { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.phase-name { font-size:13px; flex:1; }
+.phase-pct { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); }
+.phase-bar-mini { width:80px; height:3px; background:var(--border); border-radius:100px; overflow:hidden; flex-shrink:0; }
+.phase-bar-mini-fill { height:100%; border-radius:100px; transition:width 0.5s; }
+
+/* DASHBOARD QUICK ACTIONS */
+.quick-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-bottom:28px; }
+.quick-btn { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; cursor:pointer; transition:all 0.2s; text-align:left; }
+.quick-btn:hover { border-color:var(--border2); transform:translateY(-2px); }
+.quick-btn-icon { font-size:20px; margin-bottom:8px; }
+.quick-btn-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); }
+
+/* ANIMATIONS */
+@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+
+/* RESPONSIVE */
+@media (max-width:768px) {
+  .sidebar { transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); }
+  .sidebar-overlay.open { display:block; }
+  .mobile-bar { display:flex; }
+  .main { margin-left:0; padding-top:56px; }
+  .page { padding:20px 16px; }
+  .grid-2, .grid-3, .grid-4 { grid-template-columns:1fr 1fr; }
+  .budget-summary { grid-template-columns:1fr; }
+  .page-title { font-size:28px; }
+}
+@media (max-width:480px) {
+  .grid-2, .grid-3, .grid-4 { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div id="lockscreen">
+  <div class="lock-logo">Second Brain</div>
+  <div class="lock-title">Welcome<br>Back</div>
+  <div class="lock-subtitle">Enter your PIN to continue</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+  <div class="pin-pad">
+    <button class="pin-btn" onclick="pinPress(1)">1</button>
+    <button class="pin-btn" onclick="pinPress(2)">2</button>
+    <button class="pin-btn" onclick="pinPress(3)">3</button>
+    <button class="pin-btn" onclick="pinPress(4)">4</button>
+    <button class="pin-btn" onclick="pinPress(5)">5</button>
+    <button class="pin-btn" onclick="pinPress(6)">6</button>
+    <button class="pin-btn" onclick="pinPress(7)">7</button>
+    <button class="pin-btn" onclick="pinPress(8)">8</button>
+    <button class="pin-btn" onclick="pinPress(9)">9</button>
+    <button class="pin-btn" onclick="pinPress(0)" style="grid-column:2">0</button>
+    <button class="pin-btn del" onclick="pinDel()">⌫</button>
+  </div>
+  <div class="pin-hint" onclick="showPinHint()">Forgot PIN?</div>
+</div>
+
+<!-- APP -->
+<div id="app" class="locked">
+
+  <!-- MOBILE BAR -->
+  <div class="mobile-bar">
+    <button class="menu-btn" onclick="toggleSidebar()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="mobile-brand">Second Brain</div>
+  </div>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">Second Brain</div>
+      <div class="sidebar-sub">NMIMS BBA · 2025</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-group">
+        <div class="nav-group-label">Overview</div>
+        <button class="nav-btn active" onclick="showPage('dashboard',this)">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Dashboard
+        </button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Life</div>
+        <button class="nav-btn" onclick="showPage('tasks',this)">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+          Tasks
+        </button>
+        <button class="nav-btn" onclick="showPage('goals',this)">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="3" x2="12" y2="1"/></svg>
+          Goals
+        </button>
+        <button class="nav-btn" onclick="showPage('notes',this)">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Notes
+        </button>
+        <button class="nav-btn" onclick="showPage('budget',this)">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Budget
+        </button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Finance</div>
+        <button class="nav-btn" onclick="showPage('roadmap',this)">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Roadmap
+        </button>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="lock-btn" onclick="lockApp()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Lock
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-eyebrow">Overview</div>
+      <div class="page-title" id="dash-greeting">Good morning</div>
+      <div class="page-sub">Here's where everything stands today.</div>
+
+      <div class="grid-4" style="margin-bottom:24px;">
+        <div class="card gold">
+          <div class="card-label">Tasks Today</div>
+          <div class="card-val" id="d-tasks">0</div>
+        </div>
+        <div class="card teal">
+          <div class="card-label">Goals Active</div>
+          <div class="card-val" id="d-goals">0</div>
+        </div>
+        <div class="card lavender">
+          <div class="card-label">Notes</div>
+          <div class="card-val" id="d-notes">0</div>
+        </div>
+        <div class="card green">
+          <div class="card-label">Saved This Month</div>
+          <div class="card-val" id="d-saved">₹0</div>
+        </div>
+      </div>
+
+      <!-- QUICK ACTIONS -->
+      <div class="page-eyebrow" style="margin-bottom:12px;">Quick Add</div>
+      <div class="quick-grid" style="margin-bottom:28px;">
+        <button class="quick-btn" onclick="showPage('tasks', document.querySelector('[onclick*=tasks]'));focusTaskInput()">
+          <div class="quick-btn-icon">✅</div>
+          <div class="quick-btn-label">Add Task</div>
+        </button>
+        <button class="quick-btn" onclick="showPage('notes', document.querySelector('[onclick*=notes]'));newNote()">
+          <div class="quick-btn-icon">📝</div>
+          <div class="quick-btn-label">New Note</div>
+        </button>
+        <button class="quick-btn" onclick="showPage('goals', document.querySelector('[onclick*=goals]'))">
+          <div class="quick-btn-icon">🎯</div>
+          <div class="quick-btn-label">Add Goal</div>
+        </button>
+        <button class="quick-btn" onclick="showPage('budget', document.querySelector('[onclick*=budget]'))">
+          <div class="quick-btn-icon">💸</div>
+          <div class="quick-btn-label">Log Expense</div>
+        </button>
+      </div>
+
+      <!-- ROADMAP MINI -->
+      <div class="page-eyebrow" style="margin-bottom:12px;">Finance Roadmap</div>
+      <div id="dash-roadmap" style="margin-bottom:28px;"></div>
+
+      <!-- RECENT TASKS -->
+      <div class="page-eyebrow" style="margin-bottom:12px;">Today's Tasks</div>
+      <div id="dash-tasks"></div>
+    </div>
+
+    <!-- TASKS -->
+    <div class="page" id="page-tasks">
+      <div class="page-eyebrow">Daily Tasks</div>
+      <div class="page-title">Tasks</div>
+      <div class="page-sub">Stay on top of what matters.</div>
+
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <input class="input" id="task-input" placeholder="Add a new task..." onkeydown="if(event.key==='Enter')addTask()">
+        </div>
+        <div class="form-group" style="flex:0 0 130px;">
+          <select class="input" id="task-priority">
+            <option value="high">High Priority</option>
+            <option value="mid" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="addTask()">Add</button>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" onclick="filterTasks('all')" id="tf-all">All</button>
+        <button class="btn btn-ghost btn-sm" onclick="filterTasks('active')" id="tf-active">Active</button>
+        <button class="btn btn-ghost btn-sm" onclick="filterTasks('done')" id="tf-done">Done</button>
+      </div>
+
+      <div id="task-list"></div>
+      <div id="task-empty" style="display:none;text-align:center;padding:40px;color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;">NO TASKS YET</div>
+    </div>
+
+    <!-- GOALS -->
+    <div class="page" id="page-goals">
+      <div class="page-eyebrow">Goals & Milestones</div>
+      <div class="page-title">Goals</div>
+      <div class="page-sub">Short, mid, and long-term milestones.</div>
+
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" onclick="filterGoals('all')" id="gf-all">All</button>
+        <button class="btn btn-ghost btn-sm" onclick="filterGoals('short')" id="gf-short">Short Term</button>
+        <button class="btn btn-ghost btn-sm" onclick="filterGoals('mid')" id="gf-mid">Mid Term</button>
+        <button class="btn btn-ghost btn-sm" onclick="filterGoals('long')" id="gf-long">Long Term</button>
+      </div>
+
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-label" style="margin-bottom:12px;">Add New Goal</div>
+        <div class="form-row">
+          <div class="form-group" style="flex:2;">
+            <input class="input" id="goal-input" placeholder="What do you want to achieve?">
+          </div>
+          <div class="form-group" style="flex:0 0 130px;">
+            <select class="input" id="goal-horizon">
+              <option value="short">Short Term</option>
+              <option value="mid">Mid Term</option>
+              <option value="long">Long Term</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Target Date (optional)</label>
+            <input class="input" id="goal-date" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="input" id="goal-category">
+              <option value="finance">Finance</option>
+              <option value="academic">Academic</option>
+              <option value="career">Career</option>
+              <option value="personal">Personal</option>
+              <option value="health">Health</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" style="align-self:flex-end;" onclick="addGoal()">Add Goal</button>
+        </div>
+      </div>
+
+      <div id="goal-list"></div>
+      <div id="goal-empty" style="display:none;text-align:center;padding:40px;color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;">NO GOALS YET</div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="page" id="page-notes">
+      <div class="note-list-view" id="note-list-view">
+        <div class="page-eyebrow">Knowledge Base</div>
+        <div class="page-title">Notes</div>
+        <div class="page-sub">Capture everything. Organized by topic.</div>
+
+        <div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="newNote()">+ New Note</button>
+          <select class="input" style="width:auto;flex:0 0 140px;" id="note-filter" onchange="renderNotes()">
+            <option value="all">All Notes</option>
+            <option value="finance">Finance</option>
+            <option value="academic">Academic</option>
+            <option value="bmc">BMC</option>
+            <option value="general">General</option>
+          </select>
+        </div>
+
+        <div id="notes-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;"></div>
+        <div id="notes-empty" style="display:none;text-align:center;padding:60px;color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;">NO NOTES YET</div>
+      </div>
+
+      <div class="note-editor" id="note-editor">
+        <div class="editor-header">
+          <button class="editor-back" onclick="closeEditor()">← Back</button>
+          <select class="input" style="width:auto;flex:0 0 130px;" id="edit-category">
+            <option value="general">General</option>
+            <option value="finance">Finance</option>
+            <option value="academic">Academic</option>
+            <option value="bmc">BMC</option>
+          </select>
+          <div style="flex:1;"></div>
+          <button class="btn btn-danger btn-sm" onclick="deleteNote()">Delete</button>
+        </div>
+        <input class="editor-title" id="edit-title" placeholder="Note title..." oninput="autoSaveNote()">
+        <div class="editor-body" style="margin-top:16px;">
+          <textarea class="editor-textarea" id="edit-body" placeholder="Start writing..." oninput="autoSaveNote()"></textarea>
+        </div>
+        <div style="margin-top:8px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;" id="edit-saved">Auto-saved</div>
+      </div>
+    </div>
+
+    <!-- BUDGET -->
+    <div class="page" id="page-budget">
+      <div class="page-eyebrow">Personal Finance</div>
+      <div class="page-title">Budget</div>
+      <div class="page-sub">Track income, expenses, and savings.</div>
+
+      <div class="budget-summary">
+        <div class="card green">
+          <div class="card-label">Income</div>
+          <div class="card-val" id="b-income">₹0</div>
+        </div>
+        <div class="card rose">
+          <div class="card-label">Expenses</div>
+          <div class="card-val" id="b-expenses">₹0</div>
+        </div>
+        <div class="card gold">
+          <div class="card-label">Saved</div>
+          <div class="card-val" id="b-saved">₹0</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-label" style="margin-bottom:12px;">Add Transaction</div>
+        <div class="form-row">
+          <div class="form-group" style="flex:2;">
+            <input class="input" id="b-desc" placeholder="Description...">
+          </div>
+          <div class="form-group" style="flex:0 0 130px;">
+            <input class="input" id="b-amount" type="number" placeholder="Amount (₹)">
+          </div>
+          <div class="form-group" style="flex:0 0 120px;">
+            <select class="input" id="b-type">
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:0 0 120px;">
+            <select class="input" id="b-category">
+              <option value="food">Food</option>
+              <option value="transport">Transport</option>
+              <option value="education">Education</option>
+              <option value="entertainment">Entertainment</option>
+              <option value="savings">Savings</option>
+              <option value="other">Other</option>
+              <option value="allowance">Allowance</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="addTransaction()">Add</button>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="page-eyebrow" style="margin-bottom:0;">Transactions</div>
+        <select class="input" style="width:auto;" id="b-filter" onchange="renderTransactions()">
+          <option value="all">All</option>
+          <option value="income">Income</option>
+          <option value="expense">Expenses</option>
+        </select>
+      </div>
+      <div id="transaction-list"></div>
+    </div>
+
+    <!-- ROADMAP -->
+    <div class="page" id="page-roadmap">
+      <div class="page-eyebrow">Finance Track</div>
+      <div class="page-title">Learning Roadmap</div>
+      <div class="page-sub">7 months · 4 phases · 9 courses · Your path to MBA.</div>
+
+      <div class="grid-4" style="margin-bottom:28px;">
+        <div class="card gold"><div class="card-label">Completed</div><div class="card-val" id="r-done">0</div></div>
+        <div class="card teal"><div class="card-label">Remaining</div><div class="card-val" id="r-left">9</div></div>
+        <div class="card lavender"><div class="card-label">Overall</div><div class="card-val" id="r-pct">0%</div></div>
+        <div class="card green"><div class="card-label">Certs Earned</div><div class="card-val" id="r-certs">0</div></div>
+      </div>
+
+      <div class="bar-track" style="height:6px;margin-bottom:32px;">
+        <div class="bar-fill gold" id="r-overall-bar" style="width:0%"></div>
+      </div>
+
+      <div id="roadmap-phases"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const DEFAULT_PIN = "1234";
+let pinBuffer = "";
+let currentNote = null;
+let taskFilter = "all";
+let goalFilter = "all";
+
+const ROADMAP_PHASES = [
+  { id: "p1", name: "Bloomberg Market Concepts", color: "gold", colorHex: "#f0c040",
+    items: [
+      { id: "bmc", label: "Bloomberg Market Concepts", cert: true },
+      { id: "varsity", label: "Zerodha Varsity", cert: false }
+    ]
+  },
+  { id: "p2", name: "CFI Free Courses", color: "teal", colorHex: "#3dd6c8",
+    items: [
+      { id: "cfi1", label: "CFI Excel Crash Course", cert: false },
+      { id: "cfi2", label: "CFI Financial Statements", cert: false },
+      { id: "cfi3", label: "CFI Intro to Modeling", cert: false }
+    ]
+  },
+  { id: "p3", name: "Yale Financial Markets", color: "lavender", colorHex: "#9b80f0",
+    items: [
+      { id: "yale", label: "Yale Financial Markets", cert: true }
+    ]
+  },
+  { id: "p4", name: "Macquarie Excel", color: "rose", colorHex: "#f06080",
+    items: [
+      { id: "macq1", label: "Excel Skills: Essentials", cert: false },
+      { id: "macq2", label: "Excel Skills: Intermediate I", cert: false },
+      { id: "macq3", label: "Excel Skills: Intermediate II", cert: false },
+      { id: "macq4", label: "Excel Skills: Advanced", cert: true }
+    ]
+  }
+];
+
+function loadData() {
+  try { return JSON.parse(localStorage.getItem("sb_data") || "{}"); } catch(e) { return {}; }
+}
+function saveData(data) {
+  try { localStorage.setItem("sb_data", JSON.stringify(data)); } catch(e) {}
+}
+function getData(key, def) {
+  const d = loadData();
+  return d[key] !== undefined ? d[key] : def;
+}
+function setData(key, val) {
+  const d = loadData();
+  d[key] = val;
+  saveData(d);
+}
+
+// ============================================================
+// PIN LOCK
+// ============================================================
+function pinPress(n) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += String(n);
+  document.getElementById("pd" + (pinBuffer.length - 1)).classList.add("filled");
+  if (pinBuffer.length === 4) setTimeout(checkPin, 100);
+}
+function pinDel() {
+  if (!pinBuffer.length) return;
+  document.getElementById("pd" + (pinBuffer.length - 1)).classList.remove("filled");
+  pinBuffer = pinBuffer.slice(0, -1);
+}
+function checkPin() {
+  const savedPin = getData("pin", DEFAULT_PIN);
+  if (pinBuffer === savedPin) {
+    document.getElementById("lockscreen").classList.add("hidden");
+    document.getElementById("app").classList.remove("locked");
+    initApp();
+  } else {
+    document.getElementById("pin-error").textContent = "Incorrect PIN";
+    document.querySelectorAll(".pin-dot").forEach(d => d.classList.remove("filled"));
+    document.querySelector(".pin-pad").style.animation = "shake 0.3s ease";
+    setTimeout(() => { document.querySelector(".pin-pad").style.animation = ""; }, 300);
+    pinBuffer = "";
+  }
+}
+function lockApp() {
+  document.getElementById("lockscreen").classList.remove("hidden");
+  document.getElementById("app").classList.add("locked");
+  document.querySelectorAll(".pin-dot").forEach(d => d.classList.remove("filled"));
+  document.getElementById("pin-error").textContent = "";
+  pinBuffer = "";
+}
+function showPinHint() {
+  const savedPin = getData("pin", DEFAULT_PIN);
+  alert("Your current PIN is: " + savedPin + "\n\nTo change it, update the PIN in settings (coming soon).");
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showPage(id, btn) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("page-" + id).classList.add("active");
+  if (btn) btn.classList.add("active");
+  closeSidebar();
+  if (id === "dashboard") updateDashboard();
+  if (id === "roadmap") renderRoadmap();
+  if (id === "tasks") renderTasks();
+  if (id === "goals") renderGoals();
+  if (id === "notes") renderNotes();
+  if (id === "budget") renderBudget();
+}
+function toggleSidebar() {
+  document.getElementById("sidebar").classList.toggle("open");
+  document.getElementById("overlay").classList.toggle("open");
+}
+function closeSidebar() {
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("overlay").classList.remove("open");
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function initApp() {
+  updateDashboard();
+  renderRoadmap();
+  renderTasks();
+  renderGoals();
+  renderNotes();
+  renderBudget();
+  setGreeting();
+}
+
+function setGreeting() {
+  const h = new Date().getHours();
+  const g = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  document.getElementById("dash-greeting").textContent = g;
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function updateDashboard() {
+  const tasks = getData("tasks", []);
+  const goals = getData("goals", []);
+  const notes = getData("notes", []);
+  const txns = getData("transactions", []);
+
+  const activeTasks = tasks.filter(t => !t.done).length;
+  const activeGoals = goals.length;
+  const noteCount = notes.length;
+
+  const income = txns.filter(t => t.type === "income").reduce((a, t) => a + t.amount, 0);
+  const expenses = txns.filter(t => t.type === "expense").reduce((a, t) => a + t.amount, 0);
+  const saved = income - expenses;
+
+  document.getElementById("d-tasks").textContent = activeTasks;
+  document.getElementById("d-goals").textContent = activeGoals;
+  document.getElementById("d-notes").textContent = noteCount;
+  document.getElementById("d-saved").textContent = "Rs." + Math.max(0, saved).toLocaleString("en-IN");
+
+  // mini roadmap
+  const progress = getData("roadmap_progress", {});
+  let rmHtml = "";
+  ROADMAP_PHASES.forEach(ph => {
+    const done = ph.items.filter(i => progress[i.id]).length;
+    const total = ph.items.length;
+    const pct = Math.round(done / total * 100);
+    const isDone = done === total;
+    rmHtml += '<div class="phase-row">';
+    rmHtml += '<div class="phase-indicator" style="background:' + (isDone ? "var(--green)" : ph.colorHex) + '"></div>';
+    rmHtml += '<div class="phase-name">' + ph.name + '</div>';
+    rmHtml += '<div class="phase-bar-mini"><div class="phase-bar-mini-fill" style="width:' + pct + '%;background:' + ph.colorHex + '"></div></div>';
+    rmHtml += '<div class="phase-pct">' + pct + '%</div>';
+    rmHtml += '</div>';
+  });
+  document.getElementById("dash-roadmap").innerHTML = rmHtml;
+
+  // recent tasks
+  const todayTasks = tasks.slice(0, 5);
+  let tHtml = todayTasks.length ? "" : '<div style="color:var(--muted);font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:2px;padding:20px 0;">NO TASKS YET</div>';
+  todayTasks.forEach(task => {
+    tHtml += '<div class="task-item">';
+    tHtml += '<div class="task-check ' + (task.done ? "done" : "") + '" onclick="toggleTaskDash(\'' + task.id + '\')"></div>';
+    tHtml += '<div class="task-text ' + (task.done ? "done" : "") + '">' + escHtml(task.text) + '</div>';
+    tHtml += '<span class="tag ' + priorityColor(task.priority) + '">' + task.priority + '</span>';
+    tHtml += '</div>';
+  });
+  document.getElementById("dash-tasks").innerHTML = tHtml;
+}
+
+function toggleTaskDash(id) {
+  const tasks = getData("tasks", []);
+  const t = tasks.find(t => t.id === id);
+  if (t) { t.done = !t.done; setData("tasks", tasks); updateDashboard(); }
+}
+
+// ============================================================
+// TASKS
+// ============================================================
+function addTask() {
+  const input = document.getElementById("task-input");
+  const text = input.value.trim();
+  if (!text) return;
+  const priority = document.getElementById("task-priority").value;
+  const tasks = getData("tasks", []);
+  tasks.unshift({ id: uid(), text, priority, done: false, created: Date.now() });
+  setData("tasks", tasks);
+  input.value = "";
+  renderTasks();
+  updateDashboard();
+}
+
+function toggleTask(id) {
+  const tasks = getData("tasks", []);
+  const t = tasks.find(t => t.id === id);
+  if (t) { t.done = !t.done; setData("tasks", tasks); renderTasks(); updateDashboard(); }
+}
+
+function deleteTask(id) {
+  const tasks = getData("tasks", []).filter(t => t.id !== id);
+  setData("tasks", tasks);
+  renderTasks();
+  updateDashboard();
+}
+
+function filterTasks(f) {
+  taskFilter = f;
+  document.querySelectorAll("[id^='tf-']").forEach(b => b.classList.remove("btn-primary"));
+  document.getElementById("tf-" + f).classList.add("btn-primary");
+  renderTasks();
+}
+
+function renderTasks() {
+  let tasks = getData("tasks", []);
+  if (taskFilter === "active") tasks = tasks.filter(t => !t.done);
+  if (taskFilter === "done") tasks = tasks.filter(t => t.done);
+
+  const list = document.getElementById("task-list");
+  const empty = document.getElementById("task-empty");
+  if (!tasks.length) { list.innerHTML = ""; empty.style.display = "block"; return; }
+  empty.style.display = "none";
+
+  list.innerHTML = tasks.map(task => {
+    return '<div class="task-item">' +
+      '<div class="task-check ' + (task.done ? "done" : "") + '" onclick="toggleTask(\'' + task.id + '\')"></div>' +
+      '<div class="task-text ' + (task.done ? "done" : "") + '">' + escHtml(task.text) + '</div>' +
+      '<div class="task-meta">' +
+        '<span class="tag ' + priorityColor(task.priority) + '">' + task.priority + '</span>' +
+        '<button class="task-del" onclick="deleteTask(\'' + task.id + '\')">×</button>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+}
+
+function priorityColor(p) {
+  return p === "high" ? "rose" : p === "mid" ? "gold" : "muted";
+}
+
+function focusTaskInput() {
+  setTimeout(() => { const el = document.getElementById("task-input"); if (el) el.focus(); }, 100);
+}
+
+// ============================================================
+// GOALS
+// ============================================================
+function addGoal() {
+  const text = document.getElementById("goal-input").value.trim();
+  if (!text) return;
+  const horizon = document.getElementById("goal-horizon").value;
+  const date = document.getElementById("goal-date").value;
+  const category = document.getElementById("goal-category").value;
+  const goals = getData("goals", []);
+  goals.push({ id: uid(), text, horizon, date, category, progress: 0, created: Date.now() });
+  setData("goals", goals);
+  document.getElementById("goal-input").value = "";
+  renderGoals();
+  updateDashboard();
+}
+
+function updateGoalProgress(id, val) {
+  const goals = getData("goals", []);
+  const g = goals.find(g => g.id === id);
+  if (g) { g.progress = parseInt(val); setData("goals", goals); renderGoals(); }
+}
+
+function deleteGoal(id) {
+  const goals = getData("goals", []).filter(g => g.id !== id);
+  setData("goals", goals);
+  renderGoals();
+  updateDashboard();
+}
+
+function filterGoals(f) {
+  goalFilter = f;
+  document.querySelectorAll("[id^='gf-']").forEach(b => b.classList.remove("btn-primary"));
+  document.getElementById("gf-" + f).classList.add("btn-primary");
+  renderGoals();
+}
+
+function renderGoals() {
+  let goals = getData("goals", []);
+  if (goalFilter !== "all") goals = goals.filter(g => g.horizon === goalFilter);
+  const list = document.getElementById("goal-list");
+  const empty = document.getElementById("goal-empty");
+  if (!goals.length) { list.innerHTML = ""; empty.style.display = "block"; return; }
+  empty.style.display = "none";
+
+  const horizonColor = { short: "green", mid: "gold", long: "lavender" };
+  const catColor = { finance: "gold", academic: "teal", career: "orange", personal: "rose", health: "green" };
+
+  list.innerHTML = goals.map(g => {
+    const pct = g.progress || 0;
+    const hcolor = horizonColor[g.horizon] || "muted";
+    const ccolor = catColor[g.category] || "muted";
+    return '<div class="goal-item">' +
+      '<div class="goal-header">' +
+        '<div>' +
+          '<div class="goal-title">' + escHtml(g.text) + '</div>' +
+          '<div style="display:flex;gap:6px;margin-top:6px;">' +
+            '<span class="tag ' + hcolor + '">' + g.horizon + '</span>' +
+            '<span class="tag ' + ccolor + '">' + g.category + '</span>' +
+            (g.date ? '<span class="tag muted">' + g.date + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="goal-actions">' +
+          '<button class="task-del" onclick="deleteGoal(\'' + g.id + '\')">×</button>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<input type="range" min="0" max="100" value="' + pct + '" style="flex:1;accent-color:var(--gold);" oninput="updateGoalProgress(\'' + g.id + '\',this.value)">' +
+        '<div class="goal-pct" style="width:36px;text-align:right;">' + pct + '%</div>' +
+      '</div>' +
+      '<div class="bar-track"><div class="bar-fill ' + hcolor + '" style="width:' + pct + '%"></div></div>' +
+    '</div>';
+  }).join("");
+}
+
+// ============================================================
+// NOTES
+// ============================================================
+function newNote() {
+  const notes = getData("notes", []);
+  const note = { id: uid(), title: "", body: "", category: "general", updated: Date.now() };
+  notes.unshift(note);
+  setData("notes", notes);
+  openEditor(note.id);
+}
+
+function openEditor(id) {
+  const notes = getData("notes", []);
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  currentNote = id;
+  document.getElementById("edit-title").value = note.title;
+  document.getElementById("edit-body").value = note.body;
+  document.getElementById("edit-category").value = note.category || "general";
+  document.getElementById("note-list-view").classList.add("hidden");
+  document.getElementById("note-editor").classList.add("open");
+  setTimeout(() => document.getElementById("edit-title").focus(), 100);
+}
+
+function closeEditor() {
+  autoSaveNote();
+  currentNote = null;
+  document.getElementById("note-list-view").classList.remove("hidden");
+  document.getElementById("note-editor").classList.remove("open");
+  renderNotes();
+  updateDashboard();
+}
+
+function autoSaveNote() {
+  if (!currentNote) return;
+  const notes = getData("notes", []);
+  const note = notes.find(n => n.id === currentNote);
+  if (!note) return;
+  note.title = document.getElementById("edit-title").value;
+  note.body = document.getElementById("edit-body").value;
+  note.category = document.getElementById("edit-category").value;
+  note.updated = Date.now();
+  setData("notes", notes);
+  document.getElementById("edit-saved").textContent = "Saved " + new Date().toLocaleTimeString();
+}
+
+function deleteNote() {
+  if (!currentNote) return;
+  if (!confirm("Delete this note?")) return;
+  const notes = getData("notes", []).filter(n => n.id !== currentNote);
+  setData("notes", notes);
+  closeEditor();
+}
+
+function renderNotes() {
+  const filter = document.getElementById("note-filter") ? document.getElementById("note-filter").value : "all";
+  let notes = getData("notes", []);
+  if (filter !== "all") notes = notes.filter(n => n.category === filter);
+  const grid = document.getElementById("notes-grid");
+  const empty = document.getElementById("notes-empty");
+  if (!notes.length) { grid.innerHTML = ""; empty.style.display = "block"; return; }
+  empty.style.display = "none";
+  const catColor = { finance: "gold", academic: "teal", bmc: "orange", general: "muted" };
+  grid.innerHTML = notes.map(n => {
+    const preview = n.body ? n.body.slice(0, 100) : "Empty note...";
+    const d = new Date(n.updated).toLocaleDateString("en-IN", { day:"numeric", month:"short" });
+    const c = n.category || "general";
+    const cc = catColor[c] || "muted";
+    return '<div class="note-item" onclick="openEditor(\'' + n.id + '\')">' +
+      '<div class="note-title">' + (n.title || "Untitled") + '</div>' +
+      '<div class="note-preview">' + escHtml(preview) + '</div>' +
+      '<div class="note-footer">' +
+        '<span class="tag ' + cc + '">' + c + '</span>' +
+        '<span class="note-date">' + d + '</span>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+}
+
+// ============================================================
+// BUDGET
+// ============================================================
+function addTransaction() {
+  const desc = document.getElementById("b-desc").value.trim();
+  const amount = parseFloat(document.getElementById("b-amount").value);
+  const type = document.getElementById("b-type").value;
+  const category = document.getElementById("b-category").value;
+  if (!desc || isNaN(amount) || amount <= 0) return;
+  const txns = getData("transactions", []);
+  txns.unshift({ id: uid(), desc, amount, type, category, date: Date.now() });
+  setData("transactions", txns);
+  document.getElementById("b-desc").value = "";
+  document.getElementById("b-amount").value = "";
+  renderBudget();
+  updateDashboard();
+}
+
+function deleteTransaction(id) {
+  const txns = getData("transactions", []).filter(t => t.id !== id);
+  setData("transactions", txns);
+  renderBudget();
+  updateDashboard();
+}
+
+function renderBudget() {
+  const filter = document.getElementById("b-filter") ? document.getElementById("b-filter").value : "all";
+  const txns = getData("transactions", []);
+  const income = txns.filter(t => t.type === "income").reduce((a,t)=>a+t.amount,0);
+  const expenses = txns.filter(t => t.type === "expense").reduce((a,t)=>a+t.amount,0);
+  const saved = income - expenses;
+  document.getElementById("b-income").textContent = "Rs." + income.toLocaleString("en-IN");
+  document.getElementById("b-expenses").textContent = "Rs." + expenses.toLocaleString("en-IN");
+  document.getElementById("b-saved").textContent = "Rs." + Math.max(0, saved).toLocaleString("en-IN");
+
+  let list = txns;
+  if (filter === "income") list = txns.filter(t => t.type === "income");
+  if (filter === "expense") list = txns.filter(t => t.type === "expense");
+
+  const el = document.getElementById("transaction-list");
+  if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:2px;">NO TRANSACTIONS YET</div>'; return; }
+  el.innerHTML = list.map(t => {
+    const d = new Date(t.date).toLocaleDateString("en-IN", { day:"numeric", month:"short" });
+    const isIncome = t.type === "income";
+    return '<div class="budget-item">' +
+      '<div>' +
+        '<div class="budget-item-label">' + escHtml(t.desc) + '</div>' +
+        '<div style="display:flex;gap:6px;margin-top:4px;"><span class="tag muted">' + t.category + '</span><span style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--muted);">' + d + '</span></div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<div class="budget-item-amount" style="color:' + (isIncome ? "var(--green)" : "var(--rose)") + '">' +
+          (isIncome ? "+" : "-") + "Rs." + t.amount.toLocaleString("en-IN") +
+        '</div>' +
+        '<button class="budget-item-del" onclick="deleteTransaction(\'' + t.id + '\')">×</button>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+}
+
+// ============================================================
+// ROADMAP
+// ============================================================
+function toggleRoadmapItem(id) {
+  const progress = getData("roadmap_progress", {});
+  progress[id] = !progress[id];
+  setData("roadmap_progress", progress);
+  renderRoadmap();
+  updateDashboard();
+}
+
+function renderRoadmap() {
+  const progress = getData("roadmap_progress", {});
+  const allItems = ROADMAP_PHASES.flatMap(p => p.items);
+  const totalItems = allItems.length;
+  const doneItems = allItems.filter(i => progress[i.id]).length;
+  const certItems = allItems.filter(i => i.cert && progress[i.id]).length;
+  const pct = Math.round(doneItems / totalItems * 100);
+
+  document.getElementById("r-done").textContent = doneItems;
+  document.getElementById("r-left").textContent = totalItems - doneItems;
+  document.getElementById("r-pct").textContent = pct + "%";
+  document.getElementById("r-certs").textContent = certItems;
+  document.getElementById("r-overall-bar").style.width = pct + "%";
+
+  const container = document.getElementById("roadmap-phases");
+  container.innerHTML = ROADMAP_PHASES.map(ph => {
+    const done = ph.items.filter(i => progress[i.id]).length;
+    const total = ph.items.length;
+    const phPct = Math.round(done / total * 100);
+    const isDone = done === total;
+
+    return '<div class="card ' + ph.color + '" style="margin-bottom:16px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+        '<div>' +
+          '<div class="card-label">' + (isDone ? "COMPLETE" : "PHASE " + (ROADMAP_PHASES.indexOf(ph)+1)) + '</div>' +
+          '<div style="font-family:\'Syne\',sans-serif;font-size:16px;font-weight:700;">' + ph.name + '</div>' +
+        '</div>' +
+        '<div style="font-family:\'DM Mono\',monospace;font-size:20px;font-weight:500;color:var(--' + ph.color + ');">' + phPct + '%</div>' +
+      '</div>' +
+      '<div class="bar-track" style="margin-bottom:14px;"><div class="bar-fill ' + ph.color + '" style="width:' + phPct + '%"></div></div>' +
+      ph.items.map(item => {
+        const itemDone = !!progress[item.id];
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);">' +
+          '<div class="task-check ' + (itemDone ? "done" : "") + '" onclick="toggleRoadmapItem(\'' + item.id + '\')"></div>' +
+          '<div style="flex:1;font-size:13px;' + (itemDone ? "color:var(--muted);text-decoration:line-through;" : "") + '">' + item.label + '</div>' +
+          (item.cert ? '<span class="tag gold">Cert</span>' : '') +
+        '</div>';
+      }).join("") +
+    '</div>';
+  }).join("");
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function uid() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+function escHtml(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+// ============================================================
+// KEYBOARD SHORTCUT — Enter on lock screen
+// ============================================================
+document.addEventListener("keydown", e => {
+  if (!document.getElementById("lockscreen").classList.contains("hidden")) {
+    if (e.key >= "0" && e.key <= "9") pinPress(parseInt(e.key));
+    if (e.key === "Backspace") pinDel();
+  }
+});
+</script>
+</body>
+</html>
